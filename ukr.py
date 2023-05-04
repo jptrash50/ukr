@@ -15,13 +15,13 @@ import seaborn as sns
 # Import custom module
 sys.path.append('C:/Users/jp/PycharmProjects/ukr')
 import ssStats
-importlib.reload(ssStats)
+# importlib.reload(ssStats)
 
 ###################
 # Configure system logging
 import logging
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 ###################
 # Import the cleaned data file as dataframe
@@ -67,7 +67,7 @@ for r in reverse7:
 headers = list(df.columns.values)
 
 ###################
-# Define the scale names
+# Define the scale and independent variable names
 scale_list = ['CombatTrauma', 'Depress', 'PTSD', 'EmExh',
               'RAdapt', 'RRegul', 'ROpt', 'RSelfE', 'RSocial',
               'HPIAdj', 'HPIAmb', 'HPISoc', 'HPILik', 'HPIPru', 'HPIInt', 'HPISch',
@@ -80,6 +80,12 @@ scale_list = ['CombatTrauma', 'Depress', 'PTSD', 'EmExh',
               'CESattitude_', 'CESbehavior_',
               'FEAR', 'JOVIAL', 'SELFA', 'ATTENT', 'GUILT', 'SAD', 'HOSTILE']
 
+iv_list = scale_list + \
+          ['Age', 'Gender', 'Family', 'Children',
+           'BusinessClosed', 'BusRebuildYN', 'BusRebuildLoc', 'CurrFTEs_1', 'Newbusiness', 'CurrentFTEs2_1',
+           'Movement', 'ComeBack', 'BE',
+           'ent_n', 'currlocat', 'UKRcurr', 'danger722', 'danger922', 'danger1122', 'feblocat', 'UKRlocat']
+
 ###################
 # Using the list of headers, associate which items belong to each of the scales
 # ... logging.info the scales and items
@@ -89,7 +95,9 @@ scales = {}
 for scale in scale_list:
     scales[scale] = sorted([_ for _ in headers if re.search(f'^{scale}[0-9]+$', _)])
     logging.info(f'{scale} = {scales[scale]}')
+logging.info('\n')
 
+logging.info(f'Independent Variables = {iv_list}')
 logging.info('\n')
 
 ###################
@@ -101,7 +109,8 @@ a_items = {}
 a_alpha = {}
 
 for scale in scale_list:
-    max_drops = math.ceil(len(scales[scale]) / 2) - 1
+    max_drops = math.ceil(len(scales[scale]) / 2) - 1  # Not allowed to drop half or more
+    # max_drops = math.floor(len(scales[scale]) / 2)     # Not allowed to drop more than half (but exactly half is ok)
     drop_penalty = 0.02
     alphas = ssStats.alpha_drops(df[scales[scale]], max_drops=max_drops)
     best_alpha = ssStats.alpha_best(alphas, min_best=0.7, drop_penalty=drop_penalty)
@@ -120,21 +129,34 @@ for scale in scale_list:
     logging.info('\n')
 
 ###################
+# Calculate the per-row mean for each sub-scale and the z-scale for each subscale mean
+# ... store the means as df[m_{scale}]
+# ... store the z-scores as df[z_{scale}]
+for scale in scale_list + iv_list:
+    m_scale = f'm_{scale}'
+    z_scale = f'z_{scale}'
+
+    items = a_items[scale] if scale in a_items else [scale]
+
+    df[m_scale] = df[items].mean(axis=1, skipna=False)
+    df[z_scale] = ssStats.zscore(df[m_scale])
+
+###################
 # Group related scales together
 # Calculate the anovas (Analysis of Variance) of each group:scale against change-in-location (UKRlocat)
 # ... Store the group,scale,mean,std,count as anovas['UKRlocat']
 # ... logging.info each group,scale,mean,std,count against each UKRlocat
-logging.debug('# UKRlocat KEY:')
-logging.debug('#  1 = Never in UKR')
-logging.debug('#  2 = Out of UKR into Non-Danger')
-logging.debug('#  3 = Out of UKR into Danger')
-logging.debug('#  4 = Left Non-Danger UKR and out of UKR')
-logging.debug('#  5 = Left Danger UKR and out of UKR')
-logging.debug('#  6 = Moved from Danger to Non-Danger')
-logging.debug('#  7 = Moved from Danger to Other Danger')
-logging.debug('#  8 = Moved from Non-Danger to Danger')
-logging.debug('#  9 = Moved from Non-Danger to Non-Danger')
-logging.debug('#\n')
+logging.info('# UKRlocat KEY:')
+logging.info('#  1 = Never in UKR')
+logging.info('#  2 = Out of UKR into Non-Danger')
+logging.info('#  3 = Out of UKR into Danger')
+logging.info('#  4 = Left Non-Danger UKR and out of UKR')
+logging.info('#  5 = Left Danger UKR and out of UKR')
+logging.info('#  6 = Moved from Danger to Non-Danger')
+logging.info('#  7 = Moved from Danger to Other Danger')
+logging.info('#  8 = Moved from Non-Danger to Danger')
+logging.info('#  9 = Moved from Non-Danger to Non-Danger')
+logging.info('#\n')
 
 # Map each scale to a scale grouping
 scale_groups = {
@@ -175,6 +197,7 @@ for anova_name in anova_names:
                 anovas = pd.concat([anovas, arr], ignore_index=True)
 
 # logging.info each of the anova tables
+# ... save the anovas as ANOVA-{anova_name}.csv
 for anova_name in anova_names:
     for scale_group in scale_groups:
         for scale in scale_groups[scale_group]:
@@ -185,19 +208,10 @@ for anova_name in anova_names:
             logging.info(f'Summary of {anova_name}: {scale_group}: {scale}')
             logging.info(f'\n{anova_table}\n')
 
-# Plot the ANOVAs for the different scale groups
-logger.setLevel(logging.INFO)
-
-for anova_name in anova_names:
-    for scale_group in scale_groups:
-        data = anovas[(anovas['variable']==anova_name) & (anovas['group']==scale_group)]
-        sns.pointplot(x='value', y='mean', data=data, hue='scale').axhline(0, color='black')
-        plt.title(f'ANOVA {anova_name}: {scale_group}')
-        plt.show()
+    anovas[anovas['variable'] == anova_name].to_csv(f'{dname}/ANOVA-{anova_name}.csv')
 
 # Plot the anovas for the different scale groups
-logger.setLevel(logging.INFO)
-
+# ... save the plots as ANOVA-{anova_name}.png
 for anova_name in anova_names:
     fig, ax = plt.subplots(1, 4, figsize=(15, 5))
 
