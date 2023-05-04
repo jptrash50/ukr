@@ -184,3 +184,32 @@ for anova_name in anova_names:
 
             logging.info(f'Summary of {anova_name}: {scale_group}: {scale}')
             logging.info(f'\n{anova_table}\n')
+
+# Plot the ANOVAs for the different scale groups
+logger.setLevel(logging.INFO)
+
+for anova_name in anova_names:
+    for scale_group in scale_groups:
+        data = anovas[(anovas['variable']==anova_name) & (anovas['group']==scale_group)]
+        sns.pointplot(x='value', y='mean', data=data, hue='scale').axhline(0, color='black')
+        plt.title(f'ANOVA {anova_name}: {scale_group}')
+        plt.show()
+
+# Plot the anovas for the different scale groups
+logger.setLevel(logging.INFO)
+
+for anova_name in anova_names:
+    fig, ax = plt.subplots(1, 4, figsize=(15, 5))
+
+    for i, scale_group in enumerate(scale_groups):
+        data = anovas[(anovas['variable'] == anova_name) & (anovas['group'] == scale_group)]
+        sns.pointplot(x='value', y='mean', data=data, hue='scale', ax=ax[i])
+        ax[i].set_title(f'{anova_name}: {scale_group}')
+        ax[i].set_xlabel('')
+        ax[i].set_ylabel('')
+        ax[i].axhline(0, color='black')
+        ax[i].legend(loc='upper right')
+        ax[i].tick_params(top=True, labeltop=True)
+
+    plt.show()
+    fig.savefig(f'{dname}/ANOVA-{anova_name}.png', dpi=200)
