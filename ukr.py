@@ -159,7 +159,10 @@ df_alphas.to_csv(f'{dname}/{today}-alphas.csv')
 # ... store the means as df[m_{scale}]
 # ... store the z-scores as df[z_{scale}]
 # ... add m_{scale} to the iv_list
+# ... add m_{scale} to the m_scale_list
 logging.debug(f'Calculating mean for each scale...\n')
+
+m_scale_list = []
 
 for scale in scale_list:
     m_scale = f'm_{scale}'
@@ -167,6 +170,10 @@ for scale in scale_list:
     # Add the scale mean header into the independent variable list
     if m_scale not in iv_list:
         iv_list += [m_scale]
+
+    # Add the scale mean header into the m_scale_list
+    if m_scale not in m_scale_list:
+        m_scale_list += [m_scale]
 
     items = df_alphas[df_alphas['scale'] == scale]['items'].item()
 
@@ -269,9 +276,11 @@ for anova_name in anova_names:
     plt.show()
     fig.savefig(f'{dname}/{today}-anova-{anova_name}.png', dpi=200)
 
-# Calculate correlations for scale mean and selected independent variables
+###################
+# Calculate correlations for scale means and selected independent variables
 # ... save the correlation matrix as {today}-correlations.csv
 # ... save the correlation heatmap as {today}-correlations.png
+logging.debug(f'Calculating correlations for scale means and selected independent variables...\n')
 
 corr_list = ['m_Depress', 'm_EmExh', 'm_PTSD',
              'm_RRegul', 'm_ROpt', 'm_RSocial', 'm_RAdapt', 'm_RSelfE',
@@ -288,3 +297,38 @@ ax.set_title(f'Correlations')
 plt.tight_layout()
 plt.show()
 fig.savefig(f'{dname}/{today}-correlations.png', dpi=200)
+
+###################
+# Plot each of the scale means, comparing ent_n as 0 or 1
+# ... save the bar plot matrix as {today}-ent_n-m_scales.csv
+logging.debug(f'Plot each of the scale means, comparing ent_n as 0 or 1...\n')
+
+df_ent_n = pd.DataFrame(np.nan, index=[], columns=['scale', 'ent_n', 'mean'])
+
+for scale in m_scale_list:
+    for ent_n in [0, 1]:
+        arr = {
+            'scale': [scale],
+            'ent_n': [ent_n],
+            'mean': [df[df['ent_n'] == ent_n][f'{scale}'].mean()],
+            'z_mean': [df[df['ent_n'] == ent_n][f'z_{scale}'].mean()]
+        }
+        arr = pd.DataFrame.from_dict(arr)
+
+        df_ent_n = pd.concat([df_ent_n, arr], ignore_index=True)
+
+# Plot the scale means against ent_n
+fig, ax = plt.subplots(2, 1, figsize=(15, 10))
+
+sns.barplot(x='scale', y='mean', hue='ent_n', data=df_ent_n, ax=ax[0])
+ax[0].set_title(f'ent_n vs scale mean')
+ax[0].set_xticklabels(m_scale_list, rotation=90)
+
+sns.barplot(x='scale', y='z_mean', hue='ent_n', data=df_ent_n, ax=ax[1])
+ax[1].set_title(f'ent_n vs normalized scale mean')
+ax[1].set_xticklabels(m_scale_list, rotation=90)
+
+plt.tight_layout()
+
+plt.show()
+fig.savefig(f'{dname}/{today}-ent_n-m_scales.png', dpi=200)
