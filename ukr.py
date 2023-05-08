@@ -268,3 +268,23 @@ for anova_name in anova_names:
 
     plt.show()
     fig.savefig(f'{dname}/{today}-anova-{anova_name}.png', dpi=200)
+
+# Calculate correlations for scale mean and selected independent variables
+# ... save the correlation matrix as {today}-correlations.csv
+# ... save the correlation heatmap as {today}-correlations.png
+
+corr_list = ['m_Depress', 'm_EmExh', 'm_PTSD',
+             'm_RRegul', 'm_ROpt', 'm_RSocial', 'm_RAdapt', 'm_RSelfE',
+             'm_LO', 'm_RO', 'm_OO',
+             'm_CombatTrauma', 'ent_n'
+             ]
+
+df[corr_list].corr()
+df[corr_list].corr().to_csv(f'{dname}/{today}-correlations.csv')
+
+fig, ax = plt.subplots(1, 1)
+sns.heatmap(df[corr_list].corr(), cmap='coolwarm', ax=ax)
+ax.set_title(f'Correlations')
+plt.tight_layout()
+plt.show()
+fig.savefig(f'{dname}/{today}-correlations.png', dpi=200)
