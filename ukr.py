@@ -281,8 +281,8 @@ for anova_name in anova_names:
 
 ###################
 # Calculate correlations for scale means and selected independent variables
-# ... save the correlation matrix (csv) and heatmaps (png)
-# ... as {today}-correlations-all and {today}-correlations-ent_y and {today}-correlations-ent_n
+# ... save the correlation matrix as {today}-correlations-all.csv and {today}-correlations-ent_y.csv
+# ... save the correlation heatmap as {today}-correlations-all.png and {today}-correlations-ent_y.png
 logging.debug(f'Calculating correlations for scale means and selected independent variables...\n')
 
 corr_list = ['m_Depress', 'm_EmExh', 'm_PTSD',
@@ -296,19 +296,32 @@ df[corr_list].corr().to_csv(f'{dname}/{today}-correlations-all.csv')
 df[(df['ent_n'] == 1)][corr_list].corr().to_csv(f'{dname}/{today}-correlations-ent_y.csv')
 df[(df['ent_n'] == 0)][corr_list].corr().to_csv(f'{dname}/{today}-correlations-ent_n.csv')
 
-fig, ax = plt.subplots(3, 1, figsize=(10, 15))
+fig, ax = plt.subplots(5, 1, figsize=(10, 30))
 
 # Plot the heatmap of correlations for all users
-sns.heatmap(abs(df[corr_list].corr()), cmap='YlGnBu', annot=True, fmt=".2f", ax=ax[0])
+corr = df[corr_list].corr()
+sns.heatmap(abs(corr), cmap='YlGnBu', annot=corr, fmt=".2f", ax=ax[0])
 ax[0].set_title(f'Correlations for all users')
 
 # Plot the heatmap of correlations for entrepreneurs
-sns.heatmap(abs(df[(df['ent_n'] == 1)][corr_list].corr()), cmap='YlGnBu', annot=True, fmt=".2f", ax=ax[1])
+corr = df[(df['ent_n'] == 1)][corr_list].corr()
+sns.heatmap(abs(corr), cmap='YlGnBu', annot=corr, fmt=".2f", ax=ax[1])
 ax[1].set_title(f'Correlations specifically for entrepreneurs')
 
 # Plot the heatmap of correlations for non-entrepreneurs
-sns.heatmap(abs(df[(df['ent_n'] == 0)][corr_list].corr()), cmap='YlGnBu', annot=True, fmt=".2f", ax=ax[2])
+corr = df[(df['ent_n'] == 0)][corr_list].corr()
+sns.heatmap(abs(corr), cmap='YlGnBu', annot=corr, fmt=".2f", ax=ax[2])
 ax[2].set_title(f'Correlations specifically for non-entrepreneurs')
+
+# Plot the heatmap of correlations for entrepreneurs who plan to rebuild
+corr = df[(df['ent_n'] == 1)&(df['BusRebuildYN'] == 1)][corr_list].corr()
+sns.heatmap(abs(corr), cmap='YlGnBu', annot=corr, fmt=".2f", ax=ax[3])
+ax[3].set_title(f'Correlations specifically for entrepreneurs who plan to rebuild')
+
+# Plot the heatmap of correlations for entrepreneurs who do not plan to rebuild
+corr = df[(df['ent_n'] == 1)&(df['BusRebuildYN'] == 0)][corr_list].corr()
+sns.heatmap(abs(corr), cmap='YlGnBu', annot=corr, fmt=".2f", ax=ax[4])
+ax[4].set_title(f'Correlations specifically for entrepreneurs who do not plan to rebuild')
 
 plt.tight_layout()
 
