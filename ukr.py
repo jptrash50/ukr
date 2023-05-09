@@ -50,7 +50,10 @@ df = pd.read_excel(f'{dname}/{fname}.xlsx')
 
 ###################
 # Perform any data corrections for issues not already fixed in the imported file
-pass
+logging.debug(f'Perform data corrections...\n')
+
+logging.debug(f'Create BuRebuild_y from BusRebuildYN...\n')
+df['BusRebuild_y'] = df['BusRebuildYN'].replace(4, 0)
 
 ###################
 # Add Reverse Coded measures where needed
@@ -278,30 +281,39 @@ for anova_name in anova_names:
 
 ###################
 # Calculate correlations for scale means and selected independent variables
-# ... save the correlation matrix as {today}-correlations.csv
-# ... save the correlation heatmap as {today}-correlations.png
+# ... save the correlation matrix as {today}-correlations-all.csv and {today}-correlations-ent_y.csv
+# ... save the correlation heatmap as {today}-correlations-all.png and {today}-correlations-ent_y.png
 logging.debug(f'Calculating correlations for scale means and selected independent variables...\n')
 
 corr_list = ['m_Depress', 'm_EmExh', 'm_PTSD',
              'm_RRegul', 'm_ROpt', 'm_RSocial', 'm_RAdapt', 'm_RSelfE',
              'm_LO', 'm_RO', 'm_OO',
-             'm_CombatTrauma', 'ent_n'
-             ]
+             'm_CombatTrauma',
+             'ent_n', 'BusRebuild_y']
 
 df[corr_list].corr()
-df[corr_list].corr().to_csv(f'{dname}/{today}-correlations.csv')
+df[corr_list].corr().to_csv(f'{dname}/{today}-correlations-all.csv')
+df[(df['ent_n'] == 1)][corr_list].corr().to_csv(f'{dname}/{today}-correlations-ent_y.csv')
 
-fig, ax = plt.subplots(1, 1)
-sns.heatmap(df[corr_list].corr(), cmap='coolwarm', ax=ax)
-ax.set_title(f'Correlations')
+fig, ax = plt.subplots(2, 1, figsize=(10, 15))
+
+# Plot the heatmap of correlations for all users
+sns.heatmap(df[corr_list].corr(), cmap='coolwarm', ax=ax[0])
+ax[0].set_title(f'Correlations for all users')
+
+# Plot the heatmap of correlations for entrepreneurs
+sns.heatmap(df[(df['ent_n'] == 1)][corr_list].corr(), cmap='coolwarm', ax=ax[1])
+ax[1].set_title(f'Correlations specifically for entrepreneurs')
+
 plt.tight_layout()
+
 plt.show()
 fig.savefig(f'{dname}/{today}-correlations.png', dpi=200)
 
 ###################
-# Plot each of the scale means, comparing ent_n as 0 or 1
-# ... save the bar plot matrix as {today}-ent_n-m_scales.csv
-logging.debug(f'Plot each of the scale means, comparing ent_n as 0 or 1...\n')
+# Plot scale means against ent_n (0=no entrepreneur, (1=yes entrepreneur)
+# ... save the bar plot matrix as {today}-ent_yn-m_scales.csv
+logging.debug(f'Plot scale means against ent_n as (0=no entrepreneur, (1=yes entrepreneur)...\n')
 
 df_ent_n = pd.DataFrame(np.nan, index=[], columns=['scale', 'ent_n', 'mean'])
 
@@ -317,15 +329,16 @@ for scale in m_scale_list:
 
         df_ent_n = pd.concat([df_ent_n, arr], ignore_index=True)
 
-# Plot the scale means against ent_n
 fig, ax = plt.subplots(2, 1, figsize=(15, 10))
 
+# Plot the scale means against ent_n
 sns.barplot(x='scale', y='mean', hue='ent_n', data=df_ent_n, ax=ax[0])
-ax[0].set_title(f'ent_n vs scale mean')
+ax[0].set_title(f'ent_n (0=no entrepreneur, 1=yes entrepreneur) vs scale means')
 ax[0].set_xticklabels(m_scale_list, rotation=90)
 
+# Plot the normalized scale means against ent_n
 sns.barplot(x='scale', y='z_mean', hue='ent_n', data=df_ent_n, ax=ax[1])
-ax[1].set_title(f'ent_n vs normalized scale mean')
+ax[1].set_title(f'ent_n (0=no entrepreneur, 1=yes entrepreneur) vs normalized scale means')
 ax[1].set_xticklabels(m_scale_list, rotation=90)
 
 plt.tight_layout()
