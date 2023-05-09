@@ -289,21 +289,26 @@ corr_list = ['m_Depress', 'm_EmExh', 'm_PTSD',
              'm_RRegul', 'm_ROpt', 'm_RSocial', 'm_RAdapt', 'm_RSelfE',
              'm_LO', 'm_RO', 'm_OO',
              'm_CombatTrauma',
-             'ent_n', 'BusRebuild_y']
+             'BusRebuild_y', 'ent_n']
 
 df[corr_list].corr()
 df[corr_list].corr().to_csv(f'{dname}/{today}-correlations-all.csv')
 df[(df['ent_n'] == 1)][corr_list].corr().to_csv(f'{dname}/{today}-correlations-ent_y.csv')
+df[(df['ent_n'] == 0)][corr_list].corr().to_csv(f'{dname}/{today}-correlations-ent_n.csv')
 
-fig, ax = plt.subplots(2, 1, figsize=(10, 15))
+fig, ax = plt.subplots(3, 1, figsize=(10, 15))
 
 # Plot the heatmap of correlations for all users
-sns.heatmap(df[corr_list].corr(), cmap='coolwarm', ax=ax[0])
+sns.heatmap(abs(df[corr_list].corr()), cmap='YlGnBu', annot=True, fmt=".2f", ax=ax[0])
 ax[0].set_title(f'Correlations for all users')
 
 # Plot the heatmap of correlations for entrepreneurs
-sns.heatmap(df[(df['ent_n'] == 1)][corr_list].corr(), cmap='coolwarm', ax=ax[1])
+sns.heatmap(abs(df[(df['ent_n'] == 1)][corr_list].corr()), cmap='YlGnBu', annot=True, fmt=".2f", ax=ax[1])
 ax[1].set_title(f'Correlations specifically for entrepreneurs')
+
+# Plot the heatmap of correlations for non-entrepreneurs
+sns.heatmap(abs(df[(df['ent_n'] == 0)][corr_list].corr()), cmap='YlGnBu', annot=True, fmt=".2f", ax=ax[2])
+ax[2].set_title(f'Correlations specifically for non-entrepreneurs')
 
 plt.tight_layout()
 
