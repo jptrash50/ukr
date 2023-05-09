@@ -281,8 +281,8 @@ for anova_name in anova_names:
 
 ###################
 # Calculate correlations for scale means and selected independent variables
-# ... save the correlation matrix as {today}-correlations-all.csv and {today}-correlations-ent_y.csv
-# ... save the correlation heatmap as {today}-correlations-all.png and {today}-correlations-ent_y.png
+# ... save the correlation matrix (csv) and heatmaps (png)
+# ... as {today}-correlations-all and {today}-correlations-ent_y and {today}-correlations-ent_n
 logging.debug(f'Calculating correlations for scale means and selected independent variables...\n')
 
 corr_list = ['m_Depress', 'm_EmExh', 'm_PTSD',
