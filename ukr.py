@@ -288,7 +288,7 @@ for anova_name in anova_names:
                 ax[i, j].axhline(0, color='black')
 
     plt.show()
-    fig.savefig(f'{dname}/{today}-anova-{anova_name}.png', dpi=200)
+    fig.savefig(f'{dname}/{today}-anova-{anova_name}-linegraph.png', dpi=200)
 
 ###################
 # Calculate correlations for scale means and selected independent variables
@@ -337,7 +337,7 @@ ax[4].set_title(f'Correlations specifically for entrepreneurs who do not plan to
 plt.tight_layout()
 
 plt.show()
-fig.savefig(f'{dname}/{today}-correlations.png', dpi=200)
+fig.savefig(f'{dname}/{today}-correlations-heatmap.png', dpi=200)
 
 ###################
 # Plot scale means against ent_n (0=no entrepreneur, (1=yes entrepreneur)
@@ -373,4 +373,4 @@ ax[1].set_xticklabels(m_scale_list, rotation=90)
 plt.tight_layout()
 
 plt.show()
-fig.savefig(f'{dname}/{today}-ent_n-m_scales.png', dpi=200)
+fig.savefig(f'{dname}/{today}-ent_n-m_scales-barchart.png', dpi=200)
