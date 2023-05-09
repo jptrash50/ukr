@@ -100,7 +100,8 @@ scale_list = ['CombatTrauma', 'Depress', 'PTSD', 'EmExh',
 iv_list = ['Age', 'Gender', 'Family', 'Children',
            'BusinessClosed', 'BusRebuildYN', 'BusRebuildLoc', 'Newbusiness',
            'Movement', 'ComeBack', 'BE',
-           'ent_n', 'currlocat', 'UKRcurr', 'danger722', 'danger922', 'danger1122', 'feblocat', 'UKRlocat']
+           'ent_n', 'currlocat', 'UKRcurr', 'danger722', 'danger922', 'danger1122', 'feblocat', 'UKRlocat',
+           'BusRebuild_y']
 
 ###################
 # Using the list of headers, associate which items belong to each of the scales
@@ -193,28 +194,19 @@ for iv in iv_list:
 logging.debug(f'Create the scale groups to be used for generating anovas...\n')
 
 scale_groups = {
-    'Mental Health': ['z_m_Depress', 'z_m_EmExh', 'z_m_PTSD'],
-    'Resilience': ['z_m_RRegul', 'z_m_ROpt', 'z_m_RSocial', 'z_m_RAdapt', 'z_m_RSelfE'],
-    'Orientations': ['z_m_LO', 'z_m_RO', 'z_m_OO'],
-    'Others': ['z_ent_n', 'z_m_CombatTrauma']
+    'Mental Health': ['m_Depress', 'm_EmExh', 'm_PTSD'],
+    'Resilience': ['m_RRegul', 'm_ROpt', 'm_RSocial', 'm_RAdapt', 'm_RSelfE'],
+    'Orientations': ['m_LO', 'm_RO', 'm_OO'],
+    'Others': ['BusRebuild_y', 'ent_n', 'm_CombatTrauma']
 }
 
 # Initialize the anova DataFrame
-df_anovas = pd.DataFrame(np.nan, index=[], columns=['group', 'scale', 'variable', 'value', 'mean', 'std', 'freq'])
+df_anovas = pd.DataFrame(np.nan,
+                         index=[],
+                         columns=['group', 'scale', 'variable', 'value', 'mean', 'z_mean', 'std', 'freq'])
 
 # Define what variables will have anovas calculated against them
 anova_names = ['UKRlocat']
-
-logging.debug('# UKRlocat KEY:')
-logging.debug('#  1 = Never in UKR')
-logging.debug('#  2 = Out of UKR into Non-Danger')
-logging.debug('#  3 = Out of UKR into Danger')
-logging.debug('#  4 = Left Non-Danger UKR and out of UKR')
-logging.debug('#  5 = Left Danger UKR and out of UKR')
-logging.debug('#  6 = Moved from Danger to Non-Danger')
-logging.debug('#  7 = Moved from Danger to Other Danger')
-logging.debug('#  8 = Moved from Non-Danger to Danger')
-logging.debug('#  9 = Moved from Non-Danger to Non-Danger\n')
 
 # Calculate the anovas (Analysis of Variance) of each group:scale against the selected variables (ie: UKRlocat)
 # ... Store the group,scale,mean,std,count as df_anovas['{anova_name}']
@@ -238,6 +230,7 @@ for anova_name in anova_names:
                     'variable': [anova_name],
                     'value': [anova_group_value],
                     'mean': [df[anova_group == anova_group_value][scale].mean()],
+                    'z_mean': [df[anova_group == anova_group_value][f'z_{scale}'].mean()],
                     'std': [df[anova_group == anova_group_value][scale].std()],
                     'freq': [df[anova_group == anova_group_value][scale].count()]
                 }
@@ -263,18 +256,36 @@ for anova_name in anova_names:
 
 # Plot the anovas for the different scale groups
 # ... save the plots as {today}-anova-{anova_name}.png
+logging.info('# UKRlocat KEY:')
+logging.info('#  1 = Never in UKR')
+logging.info('#  2 = Out of UKR into Non-Danger')
+logging.info('#  3 = Out of UKR into Danger')
+logging.info('#  4 = Left Non-Danger UKR and out of UKR')
+logging.info('#  5 = Left Danger UKR and out of UKR')
+logging.info('#  6 = Moved from Danger to Non-Danger')
+logging.info('#  7 = Moved from Danger to Other Danger')
+logging.info('#  8 = Moved from Non-Danger to Danger')
+logging.info('#  9 = Moved from Non-Danger to Non-Danger\n')
+
 for anova_name in anova_names:
-    fig, ax = plt.subplots(1, 4, figsize=(15, 5))
+    fig, ax = plt.subplots(4, 2, figsize=(10, 25))
 
     for i, scale_group in enumerate(scale_groups):
-        data = df_anovas[(df_anovas['variable'] == anova_name) & (df_anovas['group'] == scale_group)]
-        sns.pointplot(x='value', y='mean', data=data, hue='scale', ax=ax[i])
-        ax[i].set_title(f'{anova_name}: {scale_group}')
-        ax[i].set_xlabel('')
-        ax[i].set_ylabel('')
-        ax[i].axhline(0, color='black')
-        ax[i].legend(loc='upper right')
-        ax[i].tick_params(top=True, labeltop=True)
+        for j, mean in enumerate(['mean', 'z_mean']):
+            data = df_anovas[(df_anovas['variable'] == anova_name) & (df_anovas['group'] == scale_group)]
+            sns.pointplot(x='value', y=mean, data=data, hue='scale', ax=ax[i, j])
+            ax[i, j].set_title(f'{anova_name}: {scale_group}: {mean}')
+            ax[i, j].set_xlabel('')
+            ax[i, j].set_ylabel('')
+            ax[i, j].legend(loc='lower right')
+            ax[i, j].tick_params(top=True, labeltop=True)
+            if j == 0:
+                ymin = 1 - 1*(i == 3)
+                ymax = 5 + 2*(i == 2) - 4*(i == 3)
+                ax[i, j].set_ylim(ymin, ymax)
+            else:
+                ax[i, j].set_ylim(-0.5, 0.5)
+                ax[i, j].axhline(0, color='black')
 
     plt.show()
     fig.savefig(f'{dname}/{today}-anova-{anova_name}.png', dpi=200)
@@ -314,12 +325,12 @@ sns.heatmap(abs(corr), cmap='YlGnBu', annot=corr, fmt=".2f", ax=ax[2])
 ax[2].set_title(f'Correlations specifically for non-entrepreneurs')
 
 # Plot the heatmap of correlations for entrepreneurs who plan to rebuild
-corr = df[(df['ent_n'] == 1)&(df['BusRebuildYN'] == 1)][corr_list].corr()
+corr = df[(df['ent_n'] == 1) & (df['BusRebuildYN'] == 1)][corr_list].corr()
 sns.heatmap(abs(corr), cmap='YlGnBu', annot=corr, fmt=".2f", ax=ax[3])
 ax[3].set_title(f'Correlations specifically for entrepreneurs who plan to rebuild')
 
 # Plot the heatmap of correlations for entrepreneurs who do not plan to rebuild
-corr = df[(df['ent_n'] == 1)&(df['BusRebuildYN'] == 0)][corr_list].corr()
+corr = df[(df['ent_n'] == 1) & (df['BusRebuildYN'] == 0)][corr_list].corr()
 sns.heatmap(abs(corr), cmap='YlGnBu', annot=corr, fmt=".2f", ax=ax[4])
 ax[4].set_title(f'Correlations specifically for entrepreneurs who do not plan to rebuild')
 
