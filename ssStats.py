@@ -20,8 +20,12 @@ def alpha(df):
     # Ensure the dataframe has no missing items
     df = df.dropna()
 
-    # Number of columns/items ... len(df.columns)
+    # Number of columns/items, aka: len(df.columns)
     num_items = df.shape[1]
+
+    # If there are not at least two items in the scale, then return a 1
+    if num_items < 2:
+        return 1
 
     # https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.var.html
     sum_of_item_variances = df.var(axis=0).sum()
