@@ -93,7 +93,7 @@ logging.info(f'Build the list of scales and items...')
 headers = list(df.columns.values)
 
 # List of scales in the data
-scale_list = ['CombatTrauma', 'Depress', 'PTSD', 'EmExh',
+scale_list = ['Depress', 'PTSD', 'EmExh',
               'RAdapt', 'RRegul', 'ROpt', 'RSelfE', 'RSocial',
               'HPIAdj', 'HPIAmb', 'HPISoc', 'HPILik', 'HPIPru', 'HPIInt', 'HPISch',
               'HDSExc', 'HDSSke', 'HDSCau', 'HDSRes', 'HDSLei',
@@ -106,7 +106,7 @@ scale_list = ['CombatTrauma', 'Depress', 'PTSD', 'EmExh',
               'FEAR', 'JOVIAL', 'SELFA', 'ATTENT', 'GUILT', 'SAD', 'HOSTILE']
 
 # List of independent variables in the data
-iv_list = ['Age', 'Gender', 'Family', 'Children',
+iv_list = ['CombatTrauma1', 'Age', 'Gender', 'Family', 'Children',
            'BusinessClosed', 'BusRebuildYN', 'BusRebuildLoc', 'Newbusiness',
            'Movement', 'ComeBack', 'BE',
            'ent_n', 'currlocat', 'UKRcurr', 'danger722', 'danger922', 'danger1122', 'feblocat', 'UKRlocat',
@@ -117,14 +117,7 @@ logging.debug(f'##### List of scales and all items:\n')
 
 scales = {}
 for scale in scale_list:
-    # Check for any scales which we want to manually override
-    if scale == 'CombatTrauma':
-        logging.debug(f"Specify {scale} scale to use only item ['{scale}1']")
-        scales[scale] = ['CombatTrauma1']
-
-    # No manual override, so include all items in this scale
-    else:
-        scales[scale] = sorted([_ for _ in headers if re.search(f'^{scale}[0-9]+$', _)])
+    scales[scale] = sorted([_ for _ in headers if re.search(f'^{scale}[0-9]+$', _)])
 
     logging.debug(f'{scale} = {scales[scale]}')
 logging.debug('\n')
@@ -143,8 +136,7 @@ df_alphas = pd.DataFrame(np.nan, index=[], columns=['scale', 'alpha', 'items', '
 
 for scale in scale_list:
     max_drops = math.ceil(len(scales[scale]) / 2) - 1  # Not allowed to drop half or more
-    # max_drops = math.floor(len(scales[scale]) / 2)     # Not allowed to drop more than half (but exactly half is ok)
-    drop_penalty = 0.02
+    drop_penalty = 0.02  # Prefer fewer drops
     alphas = ssStats.alpha_drops(df[scales[scale]], max_drops=max_drops)
     best_alpha = ssStats.alpha_best(alphas, min_best=0.7, drop_penalty=drop_penalty)
 
@@ -177,23 +169,16 @@ logging.info(f'... selected alphas saved as "{today}-alphas.csv"\n')
 ###################
 # Calculate the per-row mean for each sub-scale
 # ... store the means as df[m_{scale}]
-# ... store the z-scores as df[z_{scale}]
+# ... store the z-scores as df[z_m_{scale}]
 # ... add m_{scale} to the iv_list
-# ... add m_{scale} to the m_scale_list
-logging.info(f'Calculate the mean (m_) for each scale...\n')
-
-m_scale_list = []
+logging.info(f'Calculate the mean (m_scale) for each scale...\n')
 
 for scale in scale_list:
     m_scale = f'm_{scale}'
 
-    # Add the scale mean header into the independent variable list
+    # Add the scale mean as a new independent variable
     if m_scale not in iv_list:
         iv_list += [m_scale]
-
-    # Add the scale mean header into the m_scale_list
-    if m_scale not in m_scale_list:
-        m_scale_list += [m_scale]
 
     items = df_alphas[df_alphas['scale'] == scale]['items'].item()
 
@@ -201,7 +186,7 @@ for scale in scale_list:
 
 # Calculate the z-score for each independent variable and scale mean
 # ... store the z-scores as df[z_{iv}] and df[z_m_{scale}]
-logging.info(f'Calculate z-score (z_m_) standardized mean for each independent variable and scale...\n')
+logging.info(f'Calculate z-score (z_) standardized mean for each iv and m_scale...\n')
 for iv in iv_list:
     df[f'z_{iv}'] = ssStats.zscore(df[iv])
 
@@ -213,17 +198,20 @@ scale_groups = {
     'Mental Health': ['m_Depress', 'm_EmExh', 'm_PTSD'],
     'Resilience': ['m_RRegul', 'm_ROpt', 'm_RSocial', 'm_RAdapt', 'm_RSelfE'],
     'Orientations': ['m_LO', 'm_RO', 'm_OO'],
-    'Others': ['m_CombatTrauma', 'BusRebuild_y', 'ent_n']
+    'Others': ['CombatTrauma1', 'BusRebuild_y', 'ent_n'],
+    'HPI': ['m_HPIAdj', 'm_HPIAmb', 'm_HPISoc', 'm_HPILik', 'm_HPIPru', 'm_HPIInt', 'm_HPISch'],
+    'HDS': ['m_HDSExc', 'm_HDSSke', 'm_HDSCau', 'm_HDSRes', 'm_HDSLei', 'm_HDSBol',
+            'm_HDSMis', 'm_HDSCol', 'm_HDSIma', 'm_HDSDil', 'm_HDSDut'],
+    'Coping': ['m_CopeDistract', 'm_CopeActive', 'm_CopeDenial', 'm_CopeSubstance', 'm_CopeEmotSupp',
+               'm_CopeDisengage', 'm_CopeVent', 'm_CopeInstSupp', 'm_CopeReframe', 'm_CopeSelfBlame',
+               'm_CopePlan', 'm_CopeHumor', 'm_CopeAccept', 'm_CopeReligion'],
+    'CES': ['m_CESattitude_', 'm_CESbehavior_'],
+    'Emotions': ['m_FEAR', 'm_JOVIAL', 'm_SELFA', 'm_ATTENT', 'm_GUILT', 'm_SAD', 'm_HOSTILE']
 }
-
 logging.debug(f'\n{json.dumps(scale_groups, ensure_ascii=False, indent=4)}')
 
-# Define the list of scales (regardless of scale group)
-scale_groups_items = []
-
-for scale_group in scale_groups:
-    for scale in scale_groups[scale_group]:
-        scale_groups_items += [scale]
+# This is a subset of the scale groups that we are mostly interested in
+my_scale_groups = ['Mental Health', 'Resilience', 'Orientations', 'Others']
 
 ###################
 # Initialize the anova data structures
@@ -343,28 +331,35 @@ for anova_name in anova_names:
 
         logging.info(f'... Line Graphs saved as "{today}-{anova_name}-{mean}-linegraph.png"\n')
 
-# Spider Plots of the anovas for the different scale groups
+# Spider Plots of the anovas for the different scale groups we care about
 # ... save the plots as {today}-{anova_name}-{scale_group}-{mean}-spiderplot.png
 logging.info(f'Spider Plot the anovas for the different scale groups...\n')
 
 for anova_name in anova_names:
     for mean in ['mean', 'z_mean']:
-        for i, scale_group in enumerate(scale_groups):
+        for i, scale_group in enumerate(my_scale_groups):
             # Skip the "Others" category for the spider plots
-            if i == 3:
+            if scale_group == 'Others':
                 continue
 
+            # Add "CombatTrauma1" into each plot since we're skipping "Others"
             data = df_anovas[(df_anovas['item'] == anova_name) &
-                             ((df_anovas['group'] == scale_group) | (df_anovas['scale'] == 'm_CombatTrauma'))]
+                             ((df_anovas['group'] == scale_group) | (df_anovas['scale'] == 'CombatTrauma1'))]
             ax = spiderplot.spiderplot(x='value', y=mean, data=data, hue='scale')
             ax.set_title(f'{anova_name}: {scale_group}: {mean}')
 
             if mean == 'mean':
+                # The "mean" plots range from 0-5 or 0-7 depending on the scale
                 ymin = 0
                 ymax = 5 + 2 * (i == 2)
                 ax.set_rlim(ymin, ymax)
             else:
+                # The "z_mean" plots range from -0.5 to 0.5
                 ax.set_rlim(-0.5, 0.5)
+
+                # Make the z_mean=0 spline darker to highlight the centerpoint
+                ax.add_patch(plt.Circle((0, 0), radius=0.5, color='darkslategrey', fill=False, alpha=1, zorder=2,
+                                        transform=ax.transProjectionAffine + ax.transAxes))
 
             sns.move_legend(ax, "upper left", bbox_to_anchor=(1, 1))
 
@@ -386,7 +381,9 @@ for anova_name in anova_names:
             i = int((locat - 1) / 3)
             j = int((locat - 1) % 3)
 
-            data = df_anovas[(df_anovas['item'] == anova_name) & (df_anovas['value'] == locat)]
+            data = df_anovas[(df_anovas['item'] == anova_name) &
+                             (df_anovas['value'] == locat) &
+                             (df_anovas['group'].isin(my_scale_groups))]
             sns.barplot(x='scale', y=mean, data=data, ax=ax[i, j], palette='tab10')
             ax[i, j].set_title(f'Scale Means for {anova_name} == {locat}: {ukrlocat_key[locat]}')
             ax[i, j].set_xlabel('')
@@ -412,14 +409,21 @@ logging.info(f'Spider Plot the scale means for each location...\n')
 for anova_name in anova_names:
     for mean in ['mean', 'z_mean']:
         for locat in df_anovas[(df_anovas['item'] == anova_name)]['value'].unique():
-            data = df_anovas[(df_anovas['item'] == anova_name) & (df_anovas['value'] == locat)]
+            data = df_anovas[(df_anovas['item'] == anova_name) &
+                             (df_anovas['value'] == locat) &
+                             (df_anovas['group'].isin(my_scale_groups))]
             ax = spiderplot.spiderplot(x='scale', y=mean, data=data)
             ax.set_title(f'Scale {mean}s for {anova_name} {locat}: {ukrlocat_key[locat]}')
 
             if mean == 'mean':
+                # Note: The Orientations are on 7 point scale, the other scales are 5 point
                 ax.set_rlim(0, 5.5)
             else:
                 ax.set_rlim(-0.5, 0.5)
+
+                # Make the z_mean=0 spline darker to highlight the centerpoint
+                ax.add_patch(plt.Circle((0, 0), radius=0.5, color='darkslategrey', fill=False, alpha=1, zorder=2,
+                                        transform=ax.transProjectionAffine + ax.transAxes))
 
             plt.show()
             fig = ax.get_figure()
@@ -437,10 +441,18 @@ logging.debug(f'0.25 <= r < 0.5  Weak relationship')
 logging.debug(f'0.5 <= r < 0.75  Moderate relationship')
 logging.debug(f'r => 0.75        Strong relationship')
 
-df[scale_groups_items].corr()
-df[scale_groups_items].corr().to_csv(f'{dname}/{today}-correlations-all.csv')
-df[(df['ent_n'] == 1)][scale_groups_items].corr().to_csv(f'{dname}/{today}-correlations-ent_y.csv')
-df[(df['ent_n'] == 0)][scale_groups_items].corr().to_csv(f'{dname}/{today}-correlations-ent_n.csv')
+# We will calculate correlations specifically for the subset of scales that we care about
+corr_items = []
+
+for scale_group in my_scale_groups:
+    for scale in scale_groups[scale_group]:
+        corr_items += [scale]
+
+# Create the correlation tables
+df[corr_items].corr()
+df[corr_items].corr().to_csv(f'{dname}/{today}-correlations-all.csv')
+df[(df['ent_n'] == 1)][corr_items].corr().to_csv(f'{dname}/{today}-correlations-ent_y.csv')
+df[(df['ent_n'] == 0)][corr_items].corr().to_csv(f'{dname}/{today}-correlations-ent_n.csv')
 
 logging.info(f'... correlation table saved as "{today}-correlations-all.csv"\n')
 logging.info(f'... correlation table saved as "{today}-correlations-ent_y.csv"\n')
@@ -454,27 +466,27 @@ logging.info(f'Plot heatmaps for the correlations...\n')
 fig, ax = plt.subplots(5, 1, figsize=(10, 30))
 
 # Plot the heatmap of correlations for all users
-corr = df[scale_groups_items].corr()
+corr = df[corr_items].corr()
 sns.heatmap(abs(corr), cmap='YlGnBu', annot=corr, fmt=".2f", ax=ax[0])
 ax[0].set_title(f'Correlations for all users')
 
 # Plot the heatmap of correlations for entrepreneurs
-corr = df[(df['ent_n'] == 1)][scale_groups_items].corr()
+corr = df[(df['ent_n'] == 1)][corr_items].corr()
 sns.heatmap(abs(corr), cmap='YlGnBu', annot=corr, fmt=".2f", ax=ax[1])
 ax[1].set_title(f'Correlations specifically for entrepreneurs')
 
 # Plot the heatmap of correlations for non-entrepreneurs
-corr = df[(df['ent_n'] == 0)][scale_groups_items].corr()
+corr = df[(df['ent_n'] == 0)][corr_items].corr()
 sns.heatmap(abs(corr), cmap='YlGnBu', annot=corr, fmt=".2f", ax=ax[2])
 ax[2].set_title(f'Correlations specifically for non-entrepreneurs')
 
 # Plot the heatmap of correlations for entrepreneurs who plan to rebuild
-corr = df[(df['ent_n'] == 1) & (df['BusRebuildYN'] == 1)][scale_groups_items].corr()
+corr = df[(df['ent_n'] == 1) & (df['BusRebuildYN'] == 1)][corr_items].corr()
 sns.heatmap(abs(corr), cmap='YlGnBu', annot=corr, fmt=".2f", ax=ax[3])
 ax[3].set_title(f'Correlations specifically for entrepreneurs who plan to rebuild')
 
 # Plot the heatmap of correlations for entrepreneurs who do not plan to rebuild
-corr = df[(df['ent_n'] == 1) & (df['BusRebuildYN'] == 0)][scale_groups_items].corr()
+corr = df[(df['ent_n'] == 1) & (df['BusRebuildYN'] == 0)][corr_items].corr()
 sns.heatmap(abs(corr), cmap='YlGnBu', annot=corr, fmt=".2f", ax=ax[4])
 ax[4].set_title(f'Correlations specifically for entrepreneurs who do not plan to rebuild')
 
@@ -492,17 +504,23 @@ logging.info(f'Bar Plot scale means against ent_n (0=no entrepreneur, 1=yes entr
 
 df_ent_n = pd.DataFrame(np.nan, index=[], columns=['scale', 'ent_n', 'mean'])
 
-for scale in m_scale_list:
-    for ent_n in [0, 1]:
-        arr = {
-            'scale': [scale],
-            'ent_n': [ent_n],
-            'mean': [df[df['ent_n'] == ent_n][f'{scale}'].mean()],
-            'z_mean': [df[df['ent_n'] == ent_n][f'z_{scale}'].mean()]
-        }
-        arr = pd.DataFrame.from_dict(arr)
+for scale_group in scale_groups:
+    for scale in scale_groups[scale_group]:
+        # We won't be plotting the following items
+        if scale in ['ent_n', 'BusRebuild_y']:
+            continue
 
-        df_ent_n = pd.concat([df_ent_n, arr], ignore_index=True)
+        # We'll be plotting the rest of the items against ent_n and ent_y
+        for ent_n in [0, 1]:
+            arr = {
+                'scale': [scale],
+                'ent_n': [ent_n],
+                'mean': [df[df['ent_n'] == ent_n][f'{scale}'].mean()],
+                'z_mean': [df[df['ent_n'] == ent_n][f'z_{scale}'].mean()]
+            }
+            arr = pd.DataFrame.from_dict(arr)
+
+            df_ent_n = pd.concat([df_ent_n, arr], ignore_index=True)
 
 fig, ax = plt.subplots(2, 1, figsize=(15, 10))
 
