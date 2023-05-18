@@ -299,14 +299,16 @@ with open(f'{dname}/{today}-ukrlocat_key.txt', 'w', encoding='utf-8') as f:
 logging.info(f'... UKRlocat key saved as "{today}-ukrlocat_key.txt"\n')
 
 # Line Graph of the anovas for the different scale groups
-# ... save the plots as {today}-{anova_name}-scales-linegraph.png
+# ... save the plots as {today}-{mean}-{anova_name}-scales-linegraph.png
 logging.info(f'Line Graph the anovas for the different scale groups...\n')
 
 for anova_name in anova_names:
+    # Create graphs for both the mean and z_mean
     for mean in ['mean', 'z_mean']:
         fig, ax = plt.subplots(2, 2, figsize=(10, 13))
 
-        for _, scale_group in enumerate(scale_groups):
+        # Graph anovas for the subset of scale groups we care about
+        for _, scale_group in enumerate(my_scale_groups):
             i = int(_ / 2)
             j = int(_ % 2)
 
@@ -327,16 +329,19 @@ for anova_name in anova_names:
                 ax[i, j].axhline(0, color='black')
 
         plt.show()
-        fig.savefig(f'{dname}/{today}-{anova_name}-{mean}-linegraph.png', dpi=200)
+        fig.savefig(f'{dname}/{today}-{mean}-{anova_name}-scales-linegraph.png', dpi=200)
 
-        logging.info(f'... Line Graphs saved as "{today}-{anova_name}-{mean}-linegraph.png"\n')
+        logging.info(f'... Line Graphs saved as "{today}-{mean}-{anova_name}-scales-linegraph.png"\n')
 
 # Spider Plots of the anovas for the different scale groups we care about
-# ... save the plots as {today}-{anova_name}-{scale_group}-{mean}-spiderplot.png
+# ... save the plots as {today}-{mean}-{anova_name}-{scale_group}-spiderplot.png
 logging.info(f'Spider Plot the anovas for the different scale groups...\n')
 
 for anova_name in anova_names:
+    # Create plots for both the mean and z_mean
     for mean in ['mean', 'z_mean']:
+
+        # Plot the subset of scale groups that we care about
         for i, scale_group in enumerate(my_scale_groups):
             # Skip the "Others" category for the spider plots
             if scale_group == 'Others':
@@ -365,12 +370,12 @@ for anova_name in anova_names:
 
             plt.show()
             fig = ax.get_figure()
-            fig.savefig(f'{dname}/{today}-{anova_name}-{scale_group}-{mean}-spiderplot.png', dpi=200)
+            fig.savefig(f'{dname}/{today}-{mean}-{anova_name}-{scale_group}-spiderplot.png', dpi=200)
 
-            logging.info(f'... Spider Plot saved as "{today}-{anova_name}-{scale_group}-{mean}-spiderplot.png"\n')
+            logging.info(f'... Spider Plot saved as "{today}-{mean}-{anova_name}-{scale_group}-spiderplot.png"\n')
 
 # Plot the scale means for each location
-# ... save the plots as {today}-means-{anova_name}-barplot.png
+# ... save the plots as {today}-{mean}-scales-{anova_name}-barplot.png
 logging.info(f'Bar Plot the scale means for each location...\n')
 
 for anova_name in anova_names:
@@ -398,12 +403,12 @@ for anova_name in anova_names:
         plt.tight_layout()
 
         plt.show()
-        fig.savefig(f'{dname}/{today}-scales-{anova_name}-{mean}-barplot.png', dpi=200)
+        fig.savefig(f'{dname}/{today}-{mean}-scales-{anova_name}-barplot.png', dpi=200)
 
-        logging.info(f'... Bar Plots saved as "{today}-scales-{anova_name}-{mean}-barplot.png"\n')
+        logging.info(f'... Bar Plots saved as "{today}-{mean}-scales-{anova_name}-barplot.png"\n')
 
 # Spider Plot the scale means for each location
-# ... save the plots as {today}-means-{anova_name}-spiderplot.png
+# ... save the plots as {today}-{mean}-{anova_name}{locat}-scales-spiderplot.png
 logging.info(f'Spider Plot the scale means for each location...\n')
 
 for anova_name in anova_names:
@@ -427,9 +432,9 @@ for anova_name in anova_names:
 
             plt.show()
             fig = ax.get_figure()
-            fig.savefig(f'{dname}/{today}-{mean}-{anova_name}-{locat}-spiderplot.png', dpi=200)
+            fig.savefig(f'{dname}/{today}-{mean}-{anova_name}{locat}-scales-spiderplot.png', dpi=200)
 
-            logging.info(f'... Spider Plot saved as "{today}-{mean}-{anova_name}-{locat}-spiderplot.png"\n')
+            logging.info(f'... Spider Plot saved as "{today}-{mean}-{anova_name}{locat}-scales-spiderplot.png"\n')
 
 ###################
 # Calculate correlations for scale means and selected independent variables
@@ -441,7 +446,7 @@ logging.debug(f'0.25 <= r < 0.5  Weak relationship')
 logging.debug(f'0.5 <= r < 0.75  Moderate relationship')
 logging.debug(f'r => 0.75        Strong relationship')
 
-# We will calculate correlations specifically for the subset of scales that we care about
+# Create the list of items we will calculate correlate for, using the subset of scale groups we care about
 corr_items = []
 
 for scale_group in my_scale_groups:
